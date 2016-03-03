@@ -14,7 +14,7 @@
   },
   "homepage": "https://github.com/warelab/gramene-search-scripts#readme",
   "dependencies": {
-    "gramene-search-client": "^2.6.2",
+    "gramene-search-client": "^2.6.3",
     "minimist": "^1.2.0"
   }
 }
