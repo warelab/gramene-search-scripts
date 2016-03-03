@@ -1,0 +1,20 @@
+{
+  "name": "gramene-search-scripts",
+  "version": "1.0.0",
+  "description": "scripts that use the gramene-search-client",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/warelab/gramene-search-scripts.git"
+  },
+  "author": "ajo2995",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/warelab/gramene-search-scripts/issues"
+  },
+  "homepage": "https://github.com/warelab/gramene-search-scripts#readme",
+  "dependencies": {
+    "gramene-search-client": "^2.6.2",
+    "minimist": "^1.2.0"
+  }
+}
