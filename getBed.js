@@ -5,7 +5,7 @@ var url = argv.swagger || 'http://data.gramene.org/v50/swagger';
 var feature = argv.feature || 'gene';
 var combiner = argv.combiner || 'canonical';
 var idFile = argv.ids;
-var batchSize = argv.batchSize || 1000;
+var batchSize = argv.batchSize || 100;
 
 global.gramene = {defaultServer: url};
 var gramene = require('gramene-search-client').client.grameneClient;
@@ -20,6 +20,7 @@ if (idFile) {
   })
   .on('close', function() {
     gramene.then(function(client) {
+      console.error('parsed',ids.length,'ids');
       for(var i=0; i<ids.length; i+=batchSize) {
         var params = {
           rows: batchSize,
