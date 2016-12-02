@@ -4,7 +4,7 @@ var byline = require('byline');
 var fs = require('fs');
 var argv = require('minimist')(process.argv.slice(2));
 
-var url = argv.swagger || 'http://data.gramene.org/v50/swagger';
+var url = argv.swagger || 'http://data.gramene.org/swagger';
 var feature = argv.feature || 'gene';
 var combiner = argv.combiner || 'canonical';
 var idFile = argv.ids;
