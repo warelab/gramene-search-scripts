@@ -56,6 +56,27 @@ var checkTree = function checkTree() {
       return (node.model.taxon_name === "Poaceae" && node.model.node_type === "speciation")
     }
     
+    function coverage_similarity(a,b) {
+      let seqA = a.model.consensus.sequence;
+      let seqB = b.model.consensus.sequence;
+      let totalA=0;
+      let totalB=0;
+      let aligned=0;
+      const gapCode = '-'.charCodeAt(0);
+      for(var i=0; i<seqA.length; i++) {
+        if (seqA[i] !== gapCode) {
+          totalA++;
+          if (seqB[i] !== gapCode) {
+            aligned++;
+          }
+        }
+        if (seqB[i] !== gapCode) {
+          totalB++;
+        }
+      }
+      return (aligned/totalA + aligned/totalB)/2;
+    }
+
     function compareToConsensus(node) {
       node.all(function(leaf) {
         if (!leaf.hasChildren()) {
@@ -104,33 +125,12 @@ var checkTree = function checkTree() {
       if (maize_node && sorghum_node) {
         maize_node.all(function(leaf) {
           if (!leaf.hasChildren()) {
-          
-            function coverage(a,b) {
-              let seqA = a.model.consensus.sequence;
-              let seqB = b.model.consensus.sequence;
-              let totalA=0;
-              let totalB=0;
-              let aligned=0;
-              const gapCode = '-'.charCodeAt(0);
-              for(var i=0; i<seqA.length; i++) {
-                if (seqA[i] !== gapCode) {
-                  totalA++;
-                  if (seqB[i] !== gapCode) {
-                    aligned++;
-                  }
-                }
-                if (seqB[i] !== gapCode) {
-                  totalB++;
-                }
-              }
-              return (aligned/totalA + aligned/totalB)/2;
-            }
             results.push([
               genetree.model.tree_stable_id,
               nodeA.model.node_id,
               nodeA.model.consensus.nSeqs,
               leaf.model.taxon_name,
-              coverage(sorghum_node, leaf),
+              coverage_similartiy(sorghum_node, leaf),
               GrameneTrees.extensions.identity(leaf, sorghum_node),
               leaf.model.gene_stable_id
             ].join("\t"))
@@ -139,7 +139,43 @@ var checkTree = function checkTree() {
       }
     }
     
-    walkTo(genetree, isAndropogoneaeSpeciation, compareToConsensusOfSorghum);
+    function compareSorghumToConsensusOfRice(poaceae_node) {
+      let rice_node;
+      walkTo(poaceae_node,
+        function(node) {
+          return (node.model.taxon_id === 39947)
+        },
+        function(node) {
+          rice_node = node;
+        }
+      );
+      let sorghum_node;
+      walkTo(poaceae_node,
+        function(node) {
+          return (node.model.taxon_id === 4558)
+        },
+        function(node) {
+          sorghum_node = node;
+        }
+      );
+      
+      if (rice_node && sorghum_node) {
+        sorghum_node.all(function(leaf) {
+          if (!leaf.hasChildren()) {
+            results.push([
+              genetree.model.tree_stable_id,
+              poaceae_node.model.node_id,
+              poaceae_node.model.consensus.nSeqs,
+              leaf.model.taxon_name,
+              coverage_similarity(rice_node, leaf),
+              leaf.model.gene_stable_id
+            ].join("\t"))
+          }
+        })
+      }
+    }
+
+    walkTo(genetree, isPoaceaeSpeciation, compareSorghumToConsensusOfRice);
     done();
   };
   
