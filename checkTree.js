@@ -4,7 +4,7 @@ var byline = require('byline');
 var fs = require('fs');
 var argv = require('minimist')(process.argv.slice(2));
 
-var url = argv.swagger || 'http://data.gramene.org/maize3/swagger';
+var url = argv.swagger || 'https://data.gramene.org/vitis1/swagger';
 var idFile = argv.ids;
 
 global.gramene = {defaultServer: url};
@@ -45,7 +45,53 @@ var checkTree = function checkTree() {
         }
       }
     }
-    
+    function isMaizeSubtree(node) {
+      const isMaizeRE = new RegExp(/zea/i);
+      if (isMaizeRE.test(node.model.taxon_name))
+        return true;
+      if (node.model.taxon_name === "unknown") {
+        let isMaize = true;
+        node.children.forEach(function(childNode) {
+          isMaize &= isMaizeSubtree(childNode)
+        });
+        return isMaize;
+      }
+      return false;
+    }
+    function isSorghumSubtree(node) {
+      const isSorghumRE = new RegExp(/sorghum/i);
+      if (isSorghumRE.test(node.model.taxon_name))
+        return true;
+      if (node.model.taxon_name === "unknown") {
+        let isSorghum = true;
+        node.children.forEach(function(childNode) {
+          isSorghum &= isSorghumSubtree(childNode)
+        });
+        return isSorghum;
+      }
+      return false;
+    }
+    function isOryzaSubtree(node) {
+      const isOryzaRE = new RegExp(/oryza/i);
+      if (isOryzaRE.test(node.model.taxon_name))
+        return true;
+      if (node.model.taxon_name === "unknown") {
+        let isOryza = true;
+        node.children.forEach(function(childNode) {
+          isOryza &= isOryzaSubtree(childNode)
+        });
+        return isOryza;
+      }
+      return false;
+    }
+    function isNotSorghumSpeciation(node) {
+      const isSorghum = new RegExp(/sorghum/i);
+      return (node.model.node_type === "speciation" && !isSorghum.test(node.model.taxon_name))
+    }
+    function isSorghumSpeciation(node) {
+      const isSorghum = new RegExp(/sorghum/i);
+      return (node.model.node_type === "speciation" && isSorghum.test(node.model.taxon_name))
+    }
     function isZeaSpeciation(node) {
       return (node.model.taxon_name === "Zea" && node.model.node_type === "speciation")
     }
@@ -55,57 +101,77 @@ var checkTree = function checkTree() {
     function isPoaceaeSpeciation(node) {
       return (node.model.taxon_name === "Poaceae" && node.model.node_type === "speciation")
     }
+	function isPN(node) {
+		return (node.model.taxon_id === 29760 && !node.hasChildren())
+	}
+	function isFlagged(node) {
+		return (!node.hasChildren() && (node.model.taxon_id === 29760 || node.model.taxon_id === 297600000 || node.model.taxon_id === 4558))
+	}
+	function isRosidSpeciation(node) {
+		return (node.model.taxon_name === "rosids" && node.model.node_type === "speciation")
+	}
     
     function coverage_similarity(a,b) {
       let seqA = a.model.consensus.sequence;
       let seqB = b.model.consensus.sequence;
+
+      // make a vector of weights that normalize the frequency in the msa
+      let weight = [];
+      a.model.consensus.frequency.forEach(function(freq) {
+         weight.push(freq/a.model.consensus.nSeqs);
+      });
       let totalA=0;
-      let totalB=0;
       let aligned=0;
+      let matches=0;
       const gapCode = '-'.charCodeAt(0);
       for(var i=0; i<seqA.length; i++) {
         if (seqA[i] !== gapCode) {
-          totalA++;
+          totalA += weight[i];
+
           if (seqB[i] !== gapCode) {
-            aligned++;
+            aligned += weight[i];
+            if (seqB[i] === seqA[i]) {
+              matches += weight[i];
+            }
+            else {
+              matches -= weight[i];
+            }
           }
         }
-        if (seqB[i] !== gapCode) {
-          totalB++;
-        }
       }
-      return (aligned/totalA + aligned/totalB)/2;
+      return matches <  0 ? 0 : matches/totalA;
     }
+
+    // function coverage_similarity(a,b) {
+    //   let seqA = a.model.consensus.sequence;
+    //   let seqB = b.model.consensus.sequence;
+    //   let total=0;
+    //   let aligned=0;
+    //   const gapCode = '-'.charCodeAt(0);
+    //   for(var i=0; i<seqA.length; i++) {
+    //     if (seqA[i] !== gapCode) {
+    //       total++;
+    //       if (seqB[i] !== gapCode) {
+    //         aligned++;
+    //       }
+    //     }
+    //   }
+    //   return aligned/total;
+    // }
 
     function compareToConsensus(node) {
       node.all(function(leaf) {
         if (!leaf.hasChildren()) {
-          
-          function coverage(a,b) {
-            let seqA = a.model.consensus.sequence;
-            let seqB = b.model.consensus.sequence;
-            let total=0;
-            let aligned=0;
-            const gapCode = '-'.charCodeAt(0);
-            for(var i=0; i<seqA.length; i++) {
-              if (seqA[i] !== gapCode) {
-                total++;
-                if (seqB[i] !== gapCode) {
-                  aligned++;
-                }
-              }
-            }
-            return aligned/total;
-          }
           results.push([
             genetree.model.tree_stable_id,
+            genetree.model.taxon_id,
             node.model.node_id,
             node.model.consensus.nSeqs,
-            leaf.model.taxon_name,
-            coverage(node, leaf),
-            GrameneTrees.extensions.identity(leaf, node),
-            leaf.model.gene_stable_id,
-            leaf.model.protein_stable_id
+            leaf.model.taxon_id,
+            leaf.model.system_name,
+            coverage_similarity(node, leaf),
+            leaf.parent.model.node_type,
+            leaf.model.gene_stable_id
           ].join("\t"))
         }
       })
@@ -132,6 +198,35 @@ var checkTree = function checkTree() {
               leaf.model.taxon_name,
               coverage_similartiy(sorghum_node, leaf),
               GrameneTrees.extensions.identity(leaf, sorghum_node),
+              leaf.model.gene_stable_id
+            ].join("\t"))
+          }
+        })
+      }
+    }
+
+    function compareToConsensusOfArabidopsis(nodeA) {
+      let ath_node;
+      let grape_node;
+      nodeA.children.forEach(function(childNode) {
+		  console.log(childNode.model.taxon_id);
+        if (childNode.model.taxon_id === 3702) {
+          ath_node = childNode;
+        }
+        else {
+          grape_node = childNode;
+        }
+      });
+      if (ath_node && grape_node) {
+        grape_node.all(function(leaf) {
+          if (!leaf.hasChildren()) {
+            results.push([
+              genetree.model.tree_stable_id,
+              nodeA.model.node_id,
+              nodeA.model.consensus.nSeqs,
+              leaf.model.taxon_id,
+              coverage_similarty(ath_node, leaf),
+              GrameneTrees.extensions.identity(leaf, ath_node),
               leaf.model.gene_stable_id
             ].join("\t"))
           }
@@ -175,12 +270,29 @@ var checkTree = function checkTree() {
       }
     }
 
-    walkTo(genetree, isPoaceaeSpeciation, compareSorghumToConsensusOfRice);
+	function getSince(grape_gene) {
+		let node = grape_gene;
+		while (node.parent && node.model.taxon_id !== 3398) {
+			node = node.parent;
+		}
+		results.push([
+			grape_gene.model.gene_stable_id,
+			node.model.node_id,
+			node.model.taxon_id,
+			node.model.taxon_name
+		].join("\t"));
+	}
+    // walkTo(genetree, isPoaceaeSpeciation, compareSorghumToConsensusOfRice);
+    // walkTo(genetree, isRosidSpeciation, compareToConsensus);
+    // walkTo(genetree, isSorghumSpeciation, compareToConsensus);
+   // walkTo(genetree, isSorghumSubtree, compareToConsensus);
+    // walkTo(genetree, isMaizeSubtree, compareToConsensus);
+    walkTo(genetree, isOryzaSubtree, compareToConsensus);
     done();
   };
   
   var flush = function(done) {
-    this.push(results.join("\n"));
+	  this.push(results.join("\n"));
     done();
   }
   
