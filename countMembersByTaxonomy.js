@@ -6,28 +6,11 @@ var argv = require('minimist')(process.argv.slice(2));
 
 var url = argv.swagger || 'https://data.gramene.org/vitis1/swagger';
 var idFile = argv.ids;
-var vitis_taxa = [
-	297600000,
-	297600001,
-	297600002,
-	297600003,
-	297600004,
-	297600005,
-	297600006,
-	297600007,
-	297600008,
-	297600009
-];
-var sbi_taxa = [
-	4558,
-	1000655996,
-	1000561071,
-	1000656001,
-	1000651496
-];
-var taxa = sbi_taxa;
+var taxa;
+
 global.gramene = {defaultServer: url};
 var gramene = require('gramene-search-client').client.grameneClient;
+
 let GrameneTrees = require('gramene-trees-client');
 
 var reader = byline(fs.createReadStream(idFile));
@@ -93,7 +76,15 @@ var checkTree = function checkTree() {
 };
 
 
-reader
-.pipe(treeFetcher)
-.pipe(checkTree())
-.pipe(process.stdout);
+gramene.then(function(client) {
+  client['Data access']['maps']({rows:-1,fl:'taxon_id,left_index'}).then(res => {
+    let maps = res.obj;
+    maps.sort((a, b) => a.left_index < b.left_index);
+    taxa = maps.map(m => m.taxon_id);
+    reader
+    .pipe(treeFetcher)
+    .pipe(checkTree())
+    .pipe(process.stdout);
+  })
+});
+
