@@ -72,7 +72,7 @@ var checkTree = function checkTree() {
 		let row = [];
 		row.push(genetree._id);
 		row.push(0); // number of taxa present
-		for (const tid in tally) {
+		for (const tid in taxa) {
 			row.push(tally[tid]);
 			if (tally[tid] > 0) {
 				row[1]++;
