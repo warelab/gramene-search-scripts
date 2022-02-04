@@ -55,12 +55,13 @@ var checkTree = function checkTree() {
 		let row = [];
 		row.push(genetree._id);
 		row.push(0); // number of taxa present
-		for (const tid in taxa) {
+    for(let i=0;i<taxa.length;i++) {
+      let tid = taxa[i];
 			row.push(tally[tid]);
 			if (tally[tid] > 0) {
 				row[1]++;
 			}
-		}
+    }
 		if (row[1] > 0) {
 			results.push(row.join("\t"));
 		}
