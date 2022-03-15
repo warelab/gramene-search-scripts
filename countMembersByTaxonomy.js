@@ -49,7 +49,7 @@ var checkTree = function checkTree() {
 		taxa.forEach(tid => tally[tid]=0);
 		walkTo(
 			genetree,
-			node => (!node.children || node.children.length === 0) && tally.hasOwnProperty(node.model.taxon_id),
+			node => (!node.children || node.children.length === 0 || node.model.node_type === "gene_split") && tally.hasOwnProperty(node.model.taxon_id),
 			node => tally[node.model.taxon_id]++
 		);
 		let row = [];
