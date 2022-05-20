@@ -39,7 +39,9 @@ var fetcher = through2.obj(function(line, enc, done) {
   const id = cols[0];
   fetch(`${url}/genes?idList=${id}`).then(res => {
     res.json().then(data => {
-      that.push(data[0]);
+      if (data[0]) {
+        that.push(data[0]);
+      }
       done();
     });
   })
