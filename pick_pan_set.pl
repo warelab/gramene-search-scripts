@@ -7,6 +7,7 @@ while (<>) {
     chomp;
     s/\"//g;
     my ($id, $taxon_id, @orthologs) = split /,/, $_;
+    next if ($id eq "id");
     $hasTax{$id}=$taxon_id;    
     next if $pan{$id};
     $isRep{$id}=\@orthologs;
