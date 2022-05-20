@@ -1,16 +1,16 @@
 #!/usr/bin/env perl
 
-/*
-input is a comma separated file with gene_id, taxon_id, and orthologs as it comes out of the gramene api query.
-For example:
+# 
+# input is a comma separated file with gene_id, taxon_id, and orthologs as it comes out of the gramene api query.
+# For example:
+#
+# curl https://data.gramene.org/yeast_v1/search\?q\=system_name:yarr\*\&fl\=id,taxon_id,homology__all_orthologs\&wt\=csv\&rows\=36000 > yali_id.taxon_id.orthologs
+#
+# Then just read that file on stdin (or pipe it strait out of the API)
+#
+# The output file has a group identifier and the number of genes from each queried genome in the orthology group.
+# If a gene has no orthologs because it was not in compara, it reports a 0 in the corresponding taxon_id column
 
-curl https://data.gramene.org/yeast_v1/search\?q\=system_name:yarr\*\&fl\=id,taxon_id,homology__all_orthologs\&wt\=csv\&rows\=36000 > yali_id.taxon_id.orthologs
-
-Then just read that file on stdin (or pipe it strait out of the API)
-
-The output file has a group identifier and the number of genes from each queried genome in the orthology group.
-If a gene has no orthologs because it was not in compara, it reports a 0 in the corresponding taxon_id column
-*/
 my %pan; # $pan{id} = rep
 my %hasTax;
 my %isRep;
