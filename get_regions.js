@@ -159,6 +159,9 @@ var doGene = through2.obj(function(gene, enc, done) {
   if (nofasta === 0) {
     let re = /\+/g;
     gene.location.region = gene.location.region.replace(re, "p");
+    gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg291-00067','IR8_Chr00_Ctg291_00067');
+    gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg1520-00066','IR8_Chr00_Ctg1520_00066');
+    gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg130-00065','IR8_Chr00_Ctg130_00065');
     const ensURL = `${ens}/sequence/region/${gene.system_name}/${gene.location.region}:${from}..${to}:${gene.location.strand}?content-type=application/json`;
     fetch(ensURL).then(ens_res => {
       if (ens_res) {
