@@ -12,6 +12,7 @@ const idFile = argv.ids;
 const outPrefix = argv.prefix;
 const url = argv.api || 'https://devdata.gramene.org/sorghum_v2';
 const ens = argv.ens || 'https://data.gramene.org/pansite-ensembl';
+const ens2 = 'https://data.gramene.org/pansite-ensembl';
 const mode = argv.mode;
 const upstream = argv.upstream || 0;
 const downstream = argv.downstream || 0;
@@ -91,7 +92,7 @@ var doGene = through2.obj(function(gene, enc, done) {
       `.`,
       `+`,
       `.`,
-      `ID=${gene._id};Name=${gene._id}\n`
+      `ID=gene:${gene._id};Name=${gene._id}\n`
     ];
     gff_writer.write(gff.join("\t"));
     const can_id = gene.gene_structure.canonical_transcript;
@@ -105,7 +106,7 @@ var doGene = through2.obj(function(gene, enc, done) {
       gff[3] = ggp.remap(gene, 1, 'transcript', 'gene', can_id) + my_up;
       gff[4] = ggp.remap(gene, cans[0].length, 'transcript', 'gene', can_id) + my_up;
     }
-    gff[8] = `ID=${can_id};Name=${can_id};Parent=${gene._id}\n`;
+    gff[8] = `ID=transcript:${can_id};Name=${can_id};Parent=gene:${gene._id};canonical_transcript=1\n`;
     gff_writer.write(gff.join("\t"));
     // exons
     gff[2] = `exon`;
@@ -116,7 +117,7 @@ var doGene = through2.obj(function(gene, enc, done) {
     for(let i=1;i<exon_coords.length;i++) {
       gff[3] = ggp.remap(gene, exon_coords[i-1]+1, 'transcript','gene',can_id) + my_up;
       gff[4] = ggp.remap(gene, exon_coords[i], 'transcript','gene',can_id) + my_up;
-      gff[8] = `ID=${can_id}.exon.${i};Parent=${can_id}\n`;
+      gff[8] = `Parent=transcript:${can_id};exon_id=${can_id}.exon.${i};rank=${i}\n`;
       gff_writer.write(gff.join("\t"));
     }
     if (cans[0].cds) {
@@ -132,6 +133,7 @@ var doGene = through2.obj(function(gene, enc, done) {
         gff[3] = ggp.remap(gene, exon_coords[i-1]+1, 'transcript','gene',can_id) + my_up;
         gff[4] = ggp.remap(gene, exon_coords[i], 'transcript','gene',can_id) + my_up;
         gff[7] = '.';
+        gff[8] = `Parent=transcript:${can_id};rank=${i}\n`;
         if (exon_coords[i] <= cans[0].cds.start) {
           gff[2] = 'five_prime_UTR';
         }
@@ -145,7 +147,7 @@ var doGene = through2.obj(function(gene, enc, done) {
           }
           cds_length_so_far += gff[4] - gff[3] + 1;
         }
-        gff[8] = `ID=${can_id}-${gff[2]};Parent=${can_id}\n`;
+        gff[8] = `ID=CDS:${can_id}-${gff[2]};${gff[8]}`;
         gff_writer.write(gff.join("\t"));
       }
     }
@@ -162,16 +164,53 @@ var doGene = through2.obj(function(gene, enc, done) {
     gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg291-00067','IR8_Chr00_Ctg291_00067');
     gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg1520-00066','IR8_Chr00_Ctg1520_00066');
     gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg130-00065','IR8_Chr00_Ctg130_00065');
+    if (gene.location.region === "0") {
+      gene.location.region = "zero"
+    }
     const ensURL = `${ens}/sequence/region/${gene.system_name}/${gene.location.region}:${from}..${to}:${gene.location.strand}?content-type=application/json`;
+    const ensURL2 = `${ens2}/sequence/region/${gene.system_name}/${gene.location.region}:${from}..${to}:${gene.location.strand}?content-type=application/json`;
+    if (to - from > 100000) {
+      fetch(ensURL2).then(ens_res2 => {
+        if (ens_res2) {
+          ens_res2.json().then(seq_data => {
+            let seq = seq_data.seq;
+            if (seq) {
+              fasta_writer.write(`>${mode.toUpperCase()}.${gene._id} ${gene.system_name} ${gene.location.region}:${from}..${to}:${gene.location.strand}\n${seq}\n`);
+              done();
+            }
+            else {
+              throw(`seq not defined for for ${gene._id} in response from ${ensURL2}`)                    
+            }
+          })
+        }
+      })
+      return;
+    }
     fetch(ensURL).then(ens_res => {
       if (ens_res) {
         ens_res.json().then(seq_data => {
           let seq = seq_data.seq;
-          if (!seq) {
-            throw(`seq not defined for for ${gene._id} in response from ${ensURL}`)
+          if (seq) {
+            fasta_writer.write(`>${mode.toUpperCase()}.${gene._id} ${gene.system_name} ${gene.location.region}:${from}..${to}:${gene.location.strand}\n${seq}\n`);
+            done();
           }
-          fasta_writer.write(`>${mode.toUpperCase()}.${gene._id} ${gene.system_name} ${gene.location.region}:${from}..${to}:${gene.location.strand}\n${seq}\n`);
-          done();
+          else {
+            console.error(`seq for ${gene._id} not in ${ensURL} try again with ${ens2}`)
+            fetch(ensURL2).then(ens_res2 => {
+              if (ens_res2) {
+                ens_res2.json().then(seq_data => {
+                  let seq = seq_data.seq;
+                  if (seq) {
+                    fasta_writer.write(`>${mode.toUpperCase()}.${gene._id} ${gene.system_name} ${gene.location.region}:${from}..${to}:${gene.location.strand}\n${seq}\n`);
+                    done();
+                  }
+                  else {
+                    throw(`seq not defined for for ${gene._id} in response from ${ensURL2}`)                    
+                  }
+                })
+              }
+            })
+          }
         })
       }
     })  
