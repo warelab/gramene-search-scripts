@@ -123,6 +123,7 @@ while (<$fh>) {
         }
     }
     $age{$id} ||= $species;
+    print "AGE\t$id\t$age{$id}\n";
 }
 close $fh;
 
