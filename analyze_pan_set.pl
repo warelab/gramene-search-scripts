@@ -43,11 +43,11 @@ my %outgroups = (
         },
         {
             label => "Poaceae",
-            re => qr/^Zm/
-        },
-        {
-            label => "Poaceae",
-            re => qr/^SORBI/
+            re => qr/^(Zm|SORBI)/
+        # },
+        # {
+        #     label => "Poaceae",
+        #     re => qr/^SORBI/
         }
     ],
     grapevine => [
