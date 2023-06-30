@@ -10,9 +10,9 @@ var ggp = require('gramene-gene-positions');
 
 const idFile = argv.ids;
 const outPrefix = argv.prefix;
-const url = argv.api || 'https://devdata.gramene.org/sorghum_v2';
-const ens = argv.ens || 'https://data.gramene.org/pansite-ensembl';
-const ens2 = 'https://data.gramene.org/pansite-ensembl';
+const url = argv.api || 'https://data.gramene.org/maize_v3';
+const ens = argv.ens || 'https://data.gramene.org/pansite-ensembl-87';
+const ens2 = 'https://data.gramene.org/pansite-ensembl-87';
 const mode = argv.mode;
 const upstream = argv.upstream || 0;
 const downstream = argv.downstream || 0;
@@ -164,6 +164,10 @@ var doGene = through2.obj(function(gene, enc, done) {
     gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg291-00067','IR8_Chr00_Ctg291_00067');
     gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg1520-00066','IR8_Chr00_Ctg1520_00066');
     gene.location.region = gene.location.region.replace('IR8_Chr00_Ctg130-00065','IR8_Chr00_Ctg130_00065');
+    const test_re = /scaffold\d+-\d+/;
+    if (test_re.test(gene.location.region)) {
+      gene.location.region = gene.location.region.replace('-','x');
+    }
     if (gene.location.region === "0") {
       gene.location.region = "zero"
     }
